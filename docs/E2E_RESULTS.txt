@@ -1,0 +1,104 @@
+################ DOCUMIND E2E ################
+## health
+  ok=true db=ok llm={"configured":false,"provider":"extractive-offline","model":"Grounded passage extraction"} embeddings=local
+## auth: register / duplicate / weak password / wrong password / me / unauthenticated
+  register        [201]
+  duplicate email [409]
+  weak password   [400]
+  wrong password  [401]
+  me              [200]   documents unauthenticated [401]
+## session delivery (cookie + bearer, for embedded views where cookies are refused)
+  login returns a 43-char token; bearer-only me [200] documents [200] invalid token [401]
+  cookie over https: set-cookie: documind_session=***; Path=/; Expires=Wed, 23 Dec 2026 14:42:52 GMT; Max-Age=2592000; Secure; HttpOnly; SameSite=none
+  cookie over http : set-cookie: documind_session=***; Path=/; Expires=Wed, 23 Dec 2026 14:42:52 GMT; Max-Age=2592000; HttpOnly; SameSite=lax
+  unknown email    [401] -> No account found for this email. Create one to get started.
+  cross-site cookie POST [403] (expected 403) same with bearer [201] (expected 201 or 429)
+## T1 document upload + indexing (samples)
+  The sample documents are already in your library.
+  - Orion Research - Q3 2025 Quarterly Report.pdf | indexed | pages=1 chunks=1 | Indexed 1 chunks from 1 page in 0.0s
+  - Atlas Platform - Pricing and Plans.pdf | indexed | pages=1 chunks=1 | Indexed 1 chunks from 1 page in 0.0s
+  - Atlas Platform - Technical Overview.pdf | indexed | pages=2 chunks=2 | Indexed 2 chunks from 2 pages in 0.2s
+## T2 document-specific question
+  ANSWER  : From the uploaded documents: | - Vector storage uses ChromaDB 0.5 with a persistent storage directory mounted on the application server. [S1] | - The embedding model is sentence-transformers/all-MiniLM-L6-v2, which produces 384-dimensional vectors. [S1]
+  SOURCES : S1=Atlas Platform - Technical Overview.pdf p.1 [0.708] ; S2=Atlas Platform - Technical Overview.pdf p.2 [0.628] ; S3=Atlas Platform - Pricing and Plans.pdf p.1 [0.417]
+  RETRIEVE: candidates=4 returned=3 best=0.708 min=0.4 embedder=documind-hashing-ngram-v1
+  DONE    : mode=extractive latency=157ms conv=090dd728-05de-42ac-a892-16eff6928c9b error=none
+## T3 multi-document question
+  ANSWER  : From the uploaded documents: | - Growth costs $99 per month and includes 10,000 indexed pages, 10 seats, API access, and priority support with an 8-hour response time. [S1] | - Starter costs $29 per month and includes 1,000 indexed pages, 2 seats, and email support with a 48-hour response time. [S1]
+  SOURCES : S1=Atlas Platform - Pricing and Plans.pdf p.1 [0.802] ; S2=Atlas Platform - Technical Overview.pdf p.2 [0.45]
+  RETRIEVE: candidates=4 returned=2 best=0.802 min=0.4 embedder=documind-hashing-ngram-v1
+  DONE    : mode=extractive latency=187ms conv=2caf9657-a2f0-49b3-8c20-e3f02fcc393c error=none
+## T4 unknown information
+  ANSWER  : I couldn't find this information in the uploaded documents. | > Retrieval returned no passages above the relevance threshold. Try rephrasing the question, pick the documents that cover this topic, or upload a document that contains it.
+  SOURCES : 
+  RETRIEVE: candidates=4 returned=0 best=0.4 min=0.4 embedder=documind-hashing-ngram-v1
+  DONE    : mode=not-found latency=142ms conv=3a6317a0-8d43-4f40-86d5-fda761f90edd error=none
+## T5 scope filter: Atlas question, only the Orion report selected
+  ANSWER  : I couldn't find this information in the uploaded documents. | > Retrieval returned no passages above the relevance threshold. Try rephrasing the question, pick the documents that cover this topic, or upload a document that contains it.
+  SOURCES : 
+  RETRIEVE: candidates=1 returned=0 best=0.165 min=0.4 embedder=documind-hashing-ngram-v1
+  DONE    : mode=not-found latency=142ms conv=0ec81e52-e1b4-428c-ad2b-5725fb8d4d82 error=none
+## follow-up question in the same conversation
+  ANSWER  : According to the uploaded documents: | - The embedding model is sentence-transformers/all-MiniLM-L6-v2, which produces 384-dimensional vectors. [S1]
+  SOURCES : S1=Atlas Platform - Technical Overview.pdf p.1 [0.772] ; S2=Atlas Platform - Pricing and Plans.pdf p.1 [0.436]
+  RETRIEVE: candidates=4 returned=2 best=0.772 min=0.4 embedder=documind-hashing-ngram-v1
+  DONE    : mode=extractive latency=92ms conv=7288cf6b-3833-44a7-acf1-68288d78ad58 error=none
+## T6 API failure: unknown conversation id -> [404]
+## regenerate last answer
+  ANSWER  : According to the uploaded documents: | - The embedding model is sentence-transformers/all-MiniLM-L6-v2, which produces 384-dimensional vectors. [S1]
+  SOURCES : S1=Atlas Platform - Technical Overview.pdf p.1 [0.772] ; S2=Atlas Platform - Pricing and Plans.pdf p.1 [0.436]
+  RETRIEVE: candidates=4 returned=2 best=0.772 min=0.4 embedder=documind-hashing-ngram-v1
+  DONE    : mode=extractive latency=96ms conv=7288cf6b-3833-44a7-acf1-68288d78ad58 error=none
+## conversation reload
+  messages=2 roles=user,assistant | last mode=extractive sources=2 scope=null
+## T1b upload validation
+  mixed request -> created=1 errors=[{"filename":"documind-fake.pdf","message":"\"documind-fake.pdf\" is not a valid PDF file."},{"filename":"documind-notes.txt","message":"\"documind-notes.txt\" is not a PDF. Only .pdf files are supported."}]
+  duplicate -> Already in your library as "documind-upload.pdf".
+  image-only pdf   [201]   no files [400]
+  - documind-blank.pdf | needs_ocr | pages=2 chunks=0 | No extractable text was found. This PDF looks scanned or image-based, and OCR is not enabled on this server. Upload a text-based PDF to index it.
+  - documind-upload.pdf | indexed | pages=2 chunks=2 | Indexed 2 chunks from 2 pages in 0.0s
+  - Orion Research - Q3 2025 Quarterly Report.pdf | indexed | pages=1 chunks=1 | Indexed 1 chunks from 1 page in 0.0s
+  - Atlas Platform - Pricing and Plans.pdf | indexed | pages=1 chunks=1 | Indexed 1 chunks from 1 page in 0.0s
+  - Atlas Platform - Technical Overview.pdf | indexed | pages=2 chunks=2 | Indexed 2 chunks from 2 pages in 0.2s
+## question answered from the freshly uploaded PDF
+  ANSWER  : From the uploaded documents: | - Warranty period is 36 months for the Helios X1. [S1] | - Charging takes 90 minutes with the 650 W charger. [S1]
+  SOURCES : S1=documind-upload.pdf p.2 [0.708] ; S2=documind-upload.pdf p.1 [0.49]
+  RETRIEVE: candidates=6 returned=2 best=0.708 min=0.4 embedder=documind-hashing-ngram-v1
+  DONE    : mode=extractive latency=94ms conv=61356577-4d67-4a40-8925-a1e0c2e98c3c error=none
+## dashboard stats (live)
+  {"documents":5,"indexed":4,"processing":0,"needsOcr":1,"errors":0,"chunks":6,"questions":6,"conversations":6,"storageBytes":8808}
+## PDF file endpoint: [200 application/pdf 1053B] magic=%PDF-
+## T8 security: user B vs user A's resources
+  GET document    [404]   GET file [404]   DELETE document [404]   GET conversation [404]
+  malformed id    [404] (expected 404)
+## delete document -> vectors removed
+  vectors before: 6
+  delete -> {"ok":true,"deleted":1}
+  vectors after:  4   GET deleted [404]
+## T7 persistence: restart the server
+  statuses after restart: needs_ocr,indexed,indexed,indexed
+  ANSWER  : From the uploaded documents: | - The engineering team is led by Dr. Amara Chen. [S1] | - Prepared by the Atlas platform team. [S2]
+  SOURCES : S1=Atlas Platform - Technical Overview.pdf p.2 [0.744] ; S2=Atlas Platform - Technical Overview.pdf p.1 [0.705]
+  RETRIEVE: candidates=4 returned=2 best=0.744 min=0.4 embedder=documind-hashing-ngram-v1
+  DONE    : mode=extractive latency=99ms conv=93614f5b-c15f-44c4-acac-2464c3f7bbb7 error=none
+## clear all conversations
+  {"ok":true,"deleted":7}
+## logout
+  me after logout [401]   /dashboard logged out -> 200 
+## pages
+  / [200]
+  /login [200]
+  /signup [200]
+  /dashboard [200]
+  /dashboard/documents [200]
+  /dashboard/assistant [200]
+  /dashboard/history [200]
+  /dashboard/settings [200]
+## T6 API failure: LLM provider unreachable (misconfigured key), app must degrade gracefully
+  health with broken LLM: ok=true llm.configured=true
+  ANSWER  : 
+  SOURCES : S1=Atlas Platform - Technical Overview.pdf p.1 [0.708] ; S2=Atlas Platform - Technical Overview.pdf p.2 [0.628] ; S3=Atlas Platform - Pricing and Plans.pdf p.1 [0.417]
+  RETRIEVE: candidates=4 returned=3 best=0.708 min=0.4 embedder=documind-hashing-ngram-v1
+  DONE    : mode=null latency=nullms conv=null error=The AI provider could not be reached. Please try again in a moment.
+  next request still served: health [200] documents [200]
+################ DONE ################
