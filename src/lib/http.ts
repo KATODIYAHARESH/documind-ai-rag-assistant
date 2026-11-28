@@ -51,7 +51,7 @@ export function handleError(err: unknown, context: string): NextResponse {
   }
   const message = err instanceof Error ? err.message : String(err);
   logger.error(`${context} -> 500`, { error: message, stack: err instanceof Error ? err.stack : undefined });
-  return fail(500, "Something went wrong on our side. Please try again.", "internal_error");
+  return fail(500, message || "Something went wrong on our side. Please try again.", "internal_error");
 }
 
 export function fail(status: number, message: string, code = "error"): NextResponse {
