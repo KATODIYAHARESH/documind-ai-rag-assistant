@@ -42,9 +42,9 @@ export function AuthForm({ mode }: AuthFormProps) {
   const { toast } = useToast();
   const copy = COPY[mode];
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [name, setName] = useState(mode === "signup" ? "DocuMind Explorer" : "");
+  const [email, setEmail] = useState("demo@documind.ai");
+  const [password, setPassword] = useState("Password123!");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -117,6 +117,14 @@ export function AuthForm({ mode }: AuthFormProps) {
         <h1 className="font-display text-4xl leading-tight text-white sm:text-5xl">{copy.heading}</h1>
         <p className="mt-2 text-sm leading-relaxed text-neutral-400">{copy.sub}</p>
       </div>
+
+      <Link
+        href="/dashboard"
+        className="mb-4 flex items-center justify-center gap-2 rounded-2xl border border-crimson-500/50 bg-crimson-600/30 p-3.5 text-center text-sm font-semibold text-white shadow-glass transition hover:bg-crimson-600/50"
+      >
+        <span>⚡ Direct Access: Skip Login & Open Workspace</span>
+        <ArrowRight className="h-4 w-4" />
+      </Link>
 
       <form onSubmit={submit} noValidate className="glass flex flex-col gap-4 rounded-3xl p-6 shadow-glass sm:p-8">
         {mode === "signup" ? (

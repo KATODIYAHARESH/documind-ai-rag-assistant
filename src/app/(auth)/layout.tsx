@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { Check } from "lucide-react";
-import { getSessionUser } from "@/lib/auth";
+import { readSessionToken } from "@/lib/auth";
 import { Ambient } from "@/components/ambient";
 import { Logo } from "@/components/ui/logo";
 import { Eyebrow } from "@/components/ui/card";
@@ -18,8 +18,8 @@ const POINTS = [
 
 /** Signed-in users skip auth pages; the split layout keeps the brand present. */
 export default async function AuthLayout({ children }: { children: ReactNode }) {
-  const user = await getSessionUser();
-  if (user) redirect("/dashboard");
+  const token = await readSessionToken();
+  if (token) redirect("/dashboard");
 
   return (
     <div className="relative flex min-h-screen">

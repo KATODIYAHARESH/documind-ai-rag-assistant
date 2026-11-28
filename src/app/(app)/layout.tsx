@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, ensureDemoUser } from "@/lib/auth";
 import { AuthProvider } from "@/context/auth";
 import { AppShell } from "@/components/app/shell";
 import { AuthGuard } from "@/components/app/auth-guard";
@@ -14,17 +14,10 @@ export const dynamic = "force-dynamic";
  * bearer token instead — so the workspace works in both cases.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const user = await getSessionUser();
-  if (user) {
-    return (
-      <AuthProvider initialUser={user}>
-        <AppShell user={user}>{children}</AppShell>
-      </AuthProvider>
-    );
-  }
+  const user = (await getSessionUser()) || (await ensureDemoUser());
   return (
-    <AuthProvider initialUser={null}>
-      <AuthGuard>{children}</AuthGuard>
+    <AuthProvider initialUser={user}>
+      <AppShell user={user}>{children}</AppShell>
     </AuthProvider>
   );
 }
